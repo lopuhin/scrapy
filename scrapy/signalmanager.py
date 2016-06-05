@@ -23,7 +23,7 @@ class SignalManager(object):
         :type signal: object
         """
         kwargs.setdefault('sender', self.sender)
-        return dispatcher.connect(receiver, signal, **kwargs)
+        return signal.connect(receiver, signal, **kwargs)
 
     def disconnect(self, receiver, signal, **kwargs):
         """
@@ -32,7 +32,7 @@ class SignalManager(object):
         are the same.
         """
         kwargs.setdefault('sender', self.sender)
-        return dispatcher.disconnect(receiver, signal, **kwargs)
+        return signal.disconnect(receiver, signal, **kwargs)
 
     def send_catch_log(self, signal, **kwargs):
         """
