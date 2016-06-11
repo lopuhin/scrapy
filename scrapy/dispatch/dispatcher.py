@@ -9,7 +9,7 @@ from utils.inspect import func_accepts_kwargs
 from six.moves import range
 
 if six.PY2:
-    from weakref_backports import WeakMethod
+    from .weakref_backports import WeakMethod
 else:
     from weakref import WeakMethod
 
@@ -25,6 +25,7 @@ NO_RECEIVERS = object()
 
 
 class Signal(object):
+
     """
     Base class for all signals
 
@@ -33,12 +34,14 @@ class Signal(object):
         receivers
             { receiverkey (id) : weakref(receiver) }
     """
+
     def __init__(self, providing_args=None, use_caching=False):
         """
         Create a new signal.
 
         providing_args
-            A list of the arguments this signal can pass along in a send() call.
+            A list of the arguments this signal can pass along in a send()
+            call.
         """
         self.receivers = []
         if providing_args is None:
@@ -51,7 +54,8 @@ class Signal(object):
         # distinct sender we cache the receivers that sender has in
         # 'sender_receivers_cache'. The cache is cleaned when .connect() or
         # .disconnect() is called and populated on send().
-        self.sender_receivers_cache = weakref.WeakKeyDictionary() if use_caching else {}
+        self.sender_receivers_cache = weakref.WeakKeyDictionary(
+        ) if use_caching else {}
         self._dead_receivers = False
 
     def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):
@@ -79,23 +83,23 @@ class Signal(object):
             weak
                 Whether to use weak references to the receiver. By default, the
                 module will attempt to use weak references to the receiver
-                objects. If this parameter is false, then strong references will
-                be used.
+                objects. If this parameter is false, then strong references
+                will be used.
 
             dispatch_uid
-                An identifier used to uniquely identify a particular instance of
-                a receiver. This will usually be a string, though it may be
+                An identifier used to uniquely identify a particular instance
+                of a receiver. This will usually be a string, though it may be
                 anything hashable.
         """
-        from django.conf import settings
 
         # If DEBUG is on, check that we got a good receiver
-        if settings.configured and settings.DEBUG:
-            assert callable(receiver), "Signal receivers must be callable."
+        # if settings.DEBUG:
+        assert callable(receiver), "Signal receivers must be callable."
 
-            # Check for **kwargs
-            if not func_accepts_kwargs(receiver):
-                raise ValueError("Signal receivers must accept keyword arguments (**kwargs).")
+        # Check for **kwargs
+        if not func_accepts_kwargs(receiver):
+                raise ValueError(
+                 "Signal receivers must accept keyword arguments (**kwargs).")
 
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
@@ -144,7 +148,8 @@ class Signal(object):
                 the unique identifier of the receiver to disconnect
         """
         if weak is not None:
-            warnings.warn("Passing `weak` to disconnect has no effect.", ScrapyDeprecationWarning, stacklevel=2)
+            warnings.warn("Passing `weak` to disconnect has no effect.",
+                          ScrapyDeprecationWarning, stacklevel=2)
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
         else:
