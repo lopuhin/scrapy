@@ -14,6 +14,8 @@ if six.PY2:
 else:
     from weakref import WeakMethod
 
+from scrapy.utils.signal import _IgnoredException
+
 
 def _make_id(target):
     if hasattr(target, '__func__'):
@@ -203,7 +205,7 @@ class Signal(object):
     def send_robust(self, sender, **named):
         """
         Send signal from sender to all connected receivers catching errors.
-
+        Modified to return Failures.
         Arguments:
 
             sender
@@ -224,6 +226,8 @@ class Signal(object):
         receiver. The traceback is always attached to the error at
         ``__traceback__``.
         """
+        dont_log = named.pop('dont_log', _IgnoredException)
+        spider = named.get('spider', None)
         responses = []
         if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return responses
@@ -233,22 +237,28 @@ class Signal(object):
         for receiver in self._live_receivers(sender):
             try:
                 response = receiver(signal=self, sender=sender, **named)
+                if isinstance(response, Deferred):
+                    logger.error("Cannot return deferreds from signal handler: %(receiver)s",
+                                 {'receiver': receiver}, extra={'spider': spider})
+            except dont_log:
+                response = Failure()
             except Exception as err:
-                if not hasattr(err, '__traceback__'):
-                    err.__traceback__ = sys.exc_info()[2]
-                responses.append((receiver, err))
+                response = Failure()
+                logger.error("Error caught on signal handler: %(receiver)s",
+                             {'receiver': receiver},
+                             exc_info=True, extra={'spider': spider})
             else:
                 responses.append((receiver, response))
         return responses
 
-    def send_robust_deferred(self, sender, **named):
+    def send_robust_deferred(self, sender, **named, errfunc=None):
         """
         Send signal from sender to all connected receivers catching errors.
-        Modified to work with functions returning twisted deferreds.
+        Modified to work with functionons returning twisted deferreds.
         Arguments:
 
             sender
-                The sender of the signal. Can be any python object (normally one
+                The sender of the signal. Can be anything python object (normally one
                 registered with a connect if you actually want something to
                 occur).
 
@@ -275,7 +285,7 @@ class Signal(object):
             try:
                 dfd = maybeDeferred(
                     receiver,  signal=self, sender=sender, **named)
-                dfd.addErrback(logerror, receiver)
+                dfd.addErrback(errfunc, receiver)
                 dfd.addBoth(lambda result: (receiver, result))
                 dfds.append(dfd)
             except Exception as err:
