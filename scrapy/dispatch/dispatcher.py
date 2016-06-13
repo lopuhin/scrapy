@@ -5,7 +5,7 @@ import weakref
 import logging
 import six
 from scrapy.exceptions import ScrapyDeprecationWarning
-from utils.inspect import func_accepts_kwargs
+from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 
