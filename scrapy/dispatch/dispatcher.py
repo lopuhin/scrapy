@@ -251,7 +251,7 @@ class Signal(object):
                 responses.append((receiver, response))
         return responses
 
-    def send_robust_deferred(self, sender, **named, errfunc=None):
+    def send_robust_deferred(self, sender, **named):
         """
         Send signal from sender to all connected receivers catching errors.
         Modified to work with functionons returning twisted deferreds.
@@ -275,6 +275,7 @@ class Signal(object):
         receiver. The traceback is always attached to the error at
         ``__traceback__``.
         """
+        errfunc = named.pop('errfunc')
         dfds = []
         if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return dfds
@@ -282,18 +283,11 @@ class Signal(object):
         # Call each receiver with whatever arguments it can accept.
         # Return a list of tuple pairs [(receiver, response), ... ].
         for receiver in self._live_receivers(sender):
-            try:
-                dfd = maybeDeferred(
-                    receiver,  signal=self, sender=sender, **named)
-                dfd.addErrback(errfunc, receiver)
-                dfd.addBoth(lambda result: (receiver, result))
-                dfds.append(dfd)
-            except Exception as err:
-                if not hasattr(err, '__traceback__'):
-                    err.__traceback__ = sys.exc_info()[2]
-                responses.append((receiver, err))
-            else:
-                responses.append((receiver, response))
+            dfd = maybeDeferred(
+                receiver,  signal=self, sender=sender, **named)
+            dfd.addErrback(errfunc, receiver)
+            dfd.addBoth(lambda result: (receiver, result))
+            dfds.append(dfd)
         d = DeferredList(dfds)
         d.addCallback(lambda out: [x[1] for x in out])
         return d

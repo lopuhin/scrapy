@@ -36,8 +36,8 @@ def send_catch_log_deferred(signal=None, sender=None, *arguments, **named):
                          exc_info=failure_to_exc_info(failure),
                          extra={'spider': spider})
         return failure
-
-    return signal.send_robust_deferred(sender=sender, **named, errfunc=logerror)
+    named['errfunc'] = logerror
+    return signal.send_robust_deferred(sender=sender, **named)
 
 
 def disconnect_all(signal=Anonymous, sender=Any):
