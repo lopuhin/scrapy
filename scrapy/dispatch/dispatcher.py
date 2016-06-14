@@ -8,6 +8,7 @@ from scrapy.exceptions import ScrapyDeprecationWarning
 from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
+from twisted.python.failure import Failure
 
 if six.PY2:
     from .weakref_backports import WeakMethod
