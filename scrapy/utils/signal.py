@@ -38,7 +38,7 @@ def send_catch_log_deferred(signal=None, sender=None, *arguments, **named):
     return signal.send_robust_deferred(sender=sender, **named)
 
 
-def disconnect_all(signal=Anonymous, sender=Any):
+def disconnect_all(signal, sender=None):
     """Disconnect all signal handlers. Useful for cleaning up after running
     tests
     """
