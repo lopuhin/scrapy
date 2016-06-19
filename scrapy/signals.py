@@ -4,7 +4,7 @@ Scrapy signals
 These signals are documented in docs/topics/signals.rst. Please don't add new
 signals here without documenting them there.
 """
-from dispatch import Signal
+from scrapy.dispatch import Signal
 
 engine_started = Signal()
 engine_stopped = Signal()
