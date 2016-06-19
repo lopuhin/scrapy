@@ -5,8 +5,6 @@ import logging
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
 
-from scrapy.utils.log import failure_to_exc_info
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,15 +24,6 @@ def send_catch_log_deferred(signal=None, sender=None, *arguments, **named):
     Returns a deferred that gets fired once all signal handlers deferreds were
     fired.
     """
-    def logerror(failure, recv):
-        spider = named.get('spider', None)
-        if dont_log is None or not isinstance(failure.value, dont_log):
-            logger.error("Error caught on signal handler: %(receiver)s",
-                         {'receiver': recv},
-                         exc_info=failure_to_exc_info(failure),
-                         extra={'spider': spider})
-        return failure
-    named['errfunc'] = logerror
     return signal.send_robust_deferred(sender=sender, **named)
 
 

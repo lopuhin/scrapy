@@ -16,6 +16,7 @@ else:
     from weakref import WeakMethod
 
 from scrapy.utils.signal import _IgnoredException
+from scrapy.utils.log import failure_to_exc_info
 
 
 def _make_id(target):
@@ -27,8 +28,7 @@ NONE_ID = _make_id(None)
 # A marker for caching
 NO_RECEIVERS = object()
 
-logger = logging.getLogger(__name__)
-
+from scrapy.utils.signal import logger
 
 class Signal(object):
 
@@ -218,14 +218,6 @@ class Signal(object):
                 Named arguments which will be passed to receivers. These
                 arguments must be a subset of the argument names defined in
                 providing_args.
-
-        Return a list of tuple pairs [(receiver, response), ... ]. May raise
-        DispatcherKeyError.
-
-        If any receiver raises an error (specifically any subclass of
-        Exception), the error instance is returned as the result for that
-        receiver. The traceback is always attached to the error at
-        ``__traceback__``.
         """
         dont_log = named.pop('dont_log', _IgnoredException)
         spider = named.get('spider', None)
@@ -243,13 +235,12 @@ class Signal(object):
                                  {'receiver': receiver}, extra={'spider': spider})
             except dont_log:
                 response = Failure()
-            except Exception as err:
+            except Exception:
                 response = Failure()
                 logger.error("Error caught on signal handler: %(receiver)s",
                              {'receiver': receiver},
                              exc_info=True, extra={'spider': spider})
-            else:
-                responses.append((receiver, response))
+            responses.append((receiver, response))
         return responses
 
     def send_robust_deferred(self, sender, **named):
@@ -267,26 +258,26 @@ class Signal(object):
                 Named arguments which will be passed to receivers. These
                 arguments must be a subset of the argument names defined in
                 providing_args.
-
-        Return a list of tuple pairs [(receiver, response), ... ]. May raise
-        DispatcherKeyError.
-
-        If any receiver raises an error (specifically any subclass of
-        Exception), the error instance is returned as the result for that
-        receiver. The traceback is always attached to the error at
-        ``__traceback__``.
         """
-        errfunc = named.pop('errfunc')
+        dont_log = named.pop('dont_log', _IgnoredException)
+
+        def logerror(failure, recv):
+            spider = named.get('spider', None)
+            if dont_log is None or not isinstance(failure.value, dont_log):
+                logger.error("Error caught on signal handler: %(receiver)s",
+                             {'receiver': recv},
+                             exc_info=failure_to_exc_info(failure),
+                             extra={'spider': spider})
+            return failure
         dfds = []
         if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return dfds
-
         # Call each receiver with whatever arguments it can accept.
         # Return a list of tuple pairs [(receiver, response), ... ].
         for receiver in self._live_receivers(sender):
             dfd = maybeDeferred(
                 receiver,  signal=self, sender=sender, **named)
-            dfd.addErrback(errfunc, receiver)
+            dfd.addErrback(logerror, receiver)
             dfd.addBoth(lambda result: (receiver, result))
             dfds.append(dfd)
         d = DeferredList(dfds)
