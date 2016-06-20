@@ -1,11 +1,10 @@
 from __future__ import absolute_import
-from pydispatch import dispatcher
 from scrapy.utils import signal as _signal
 
 
 class SignalManager(object):
 
-    def __init__(self, sender=dispatcher.Anonymous):
+    def __init__(self, sender=None):
         self.sender = sender
 
     def connect(self, receiver, signal, **kwargs):
@@ -23,7 +22,7 @@ class SignalManager(object):
         :type signal: object
         """
         kwargs.setdefault('sender', self.sender)
-        return signal.connect(receiver, signal, **kwargs)
+        return signal.connect(receiver, **kwargs)
 
     def disconnect(self, receiver, signal, **kwargs):
         """
@@ -32,7 +31,7 @@ class SignalManager(object):
         are the same.
         """
         kwargs.setdefault('sender', self.sender)
-        return signal.disconnect(receiver, signal, **kwargs)
+        return signal.disconnect(receiver, **kwargs)
 
     def send_catch_log(self, signal, **kwargs):
         """
