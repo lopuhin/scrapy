@@ -2,8 +2,8 @@ from testfixtures import LogCapture
 from twisted.trial import unittest
 from twisted.python.failure import Failure
 from twisted.internet import defer, reactor
-from pydispatch import dispatcher
 
+from scrapy.dispatch import Signal
 from scrapy.utils.signal import send_catch_log, send_catch_log_deferred
 
 
@@ -11,11 +11,11 @@ class SendCatchLogTest(unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_send_catch_log(self):
-        test_signal = object()
+        test_signal = Signal()
         handlers_called = set()
 
-        dispatcher.connect(self.error_handler, signal=test_signal)
-        dispatcher.connect(self.ok_handler, signal=test_signal)
+        test_signal.connect(self.error_handler)
+        test_signal.connect(self.ok_handler)
         with LogCapture() as l:
             result = yield defer.maybeDeferred(
                 self._get_result, test_signal, arg='test',
@@ -32,17 +32,17 @@ class SendCatchLogTest(unittest.TestCase):
         self.assert_(isinstance(result[0][1], Failure))
         self.assertEqual(result[1], (self.ok_handler, "OK"))
 
-        dispatcher.disconnect(self.error_handler, signal=test_signal)
-        dispatcher.disconnect(self.ok_handler, signal=test_signal)
+        test_signal.disconnect(self.error_handler)
+        test_signal.disconnect(self.ok_handler)
 
     def _get_result(self, signal, *a, **kw):
         return send_catch_log(signal, *a, **kw)
 
-    def error_handler(self, arg, handlers_called):
+    def error_handler(self, arg, handlers_called, **kw):
         handlers_called.add(self.error_handler)
         a = 1/0
 
-    def ok_handler(self, arg, handlers_called):
+    def ok_handler(self, arg, handlers_called, **kw):
         handlers_called.add(self.ok_handler)
         assert arg == 'test'
         return "OK"
@@ -56,7 +56,7 @@ class SendCatchLogDeferredTest(SendCatchLogTest):
 
 class SendCatchLogDeferredTest2(SendCatchLogTest):
 
-    def ok_handler(self, arg, handlers_called):
+    def ok_handler(self, arg, handlers_called, **kw):
         handlers_called.add(self.ok_handler)
         assert arg == 'test'
         d = defer.Deferred()
@@ -69,11 +69,11 @@ class SendCatchLogDeferredTest2(SendCatchLogTest):
 class SendCatchLogTest2(unittest.TestCase):
 
     def test_error_logged_if_deferred_not_supported(self):
-        test_signal = object()
-        test_handler = lambda: defer.Deferred()
-        dispatcher.connect(test_handler, test_signal)
+        test_signal = Signal()
+        test_handler = lambda **kw: defer.Deferred()
+        test_signal.connect(test_handler)
         with LogCapture() as l:
             send_catch_log(test_signal)
         self.assertEqual(len(l.records), 1)
         self.assertIn("Cannot return deferreds from signal handler", str(l))
-        dispatcher.disconnect(test_handler, test_signal)
+        test_signal.disconnect(test_handler)
