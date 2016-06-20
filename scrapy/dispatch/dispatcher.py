@@ -10,7 +10,7 @@ from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
 
-if six.PY2:
+if six.PY2 or sys.version_info >= (3,3) and sys.version_info < (3, 4):
     from .weakref_backports import WeakMethod
 else:
     from weakref import WeakMethod
