@@ -10,7 +10,7 @@ from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
 
-if six.PY2:
+if six.PY2 or sys.version_info >= (3,3) and sys.version_info < (3, 4):
     from .weakref_backports import WeakMethod
 else:
     from weakref import WeakMethod
@@ -119,7 +119,7 @@ class Signal(object):
             if hasattr(receiver, '__self__') and hasattr(receiver, '__func__'):
                 ref = WeakMethod
                 receiver_object = receiver.__self__
-            if six.PY3:
+            if six.PY3 and sys.version_info >= (3, 4):
                 receiver = ref(receiver)
                 weakref.finalize(receiver_object, self._remove_receiver)
             else:
