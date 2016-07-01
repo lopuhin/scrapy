@@ -2,4 +2,4 @@
 from django.utils. Originally written by the Django project.
 """
 
-from inspect import func_accepts_kwargs
+from scrapy.dispatch.utils.inspect import func_accepts_kwargs
