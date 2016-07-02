@@ -72,8 +72,7 @@ class SignalManager(object):
         The keyword arguments are passed to the signal handlers (connected
         through the :meth:`connect` method).
 
-        .. _deferreds:
-        http://twistedmatrix.com/documents/current/core/howto/defer.html
+        .. _deferreds: http://twistedmatrix.com/documents/current/core/howto/defer.html
         """
         kwargs.setdefault('sender', self.sender)
         return _signal.send_catch_log_deferred(signal, **kwargs)
