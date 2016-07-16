@@ -250,9 +250,9 @@ class Signal(object):
         Arguments:
 
             sender
-                The sender of the signal. Can be anything python object (normally one
-                registered with a connect if you actually want something to
-                occur).
+                The sender of the signal. Can be anything python object
+                (normally one registered with a connect if you actually
+                 want something to occur).
 
             named
                 Named arguments which will be passed to receivers. These
