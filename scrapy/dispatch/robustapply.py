@@ -5,6 +5,7 @@ what arguments a given callable object can take,
 and subset the given arguments to match only
 those which are acceptable.
 """
+import six
 
 
 def function(receiver):
@@ -47,7 +48,12 @@ def robust_apply(receiver, *arguments, **named):
     if not (codeObject.co_flags & 8):
         # fc does not have a **kwds type parameter, therefore
         # remove unacceptable arguments.
-        for arg in named.keys():
-            if arg not in acceptable:
-                del named[arg]
+        if six.PY2:
+            for arg in named.keys():
+                if arg not in acceptable:
+                    del named[arg]
+        else:
+            for arg in list(named):
+                if arg not in acceptable:
+                    del named[arg]
     return receiver(*arguments, **named)
