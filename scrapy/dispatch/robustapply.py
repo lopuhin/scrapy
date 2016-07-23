@@ -6,7 +6,8 @@ and subset the given arguments to match only
 those which are acceptable.
 """
 
-def function( receiver ):
+
+def function(receiver):
     """Get function-like callable object for given receiver
 
     returns (function_or_method, codeObject, fromMethod)
@@ -17,24 +18,29 @@ def function( receiver ):
     if hasattr(receiver, '__call__'):
         # receiver is a class instance; assume it is callable.
         # Reassign receiver to the actual method that will be called.
-        if hasattr( receiver.__call__, 'im_func') or hasattr( receiver.__call__, 'im_code'):
+        if hasattr(receiver.__call__, '__func__') \
+                or hasattr(receiver.__call__, '__code__'):
             receiver = receiver.__call__
-    if hasattr( receiver, 'im_func' ):
+    if hasattr(receiver, '__func__'):
         # an instance-method...
-        return receiver, receiver.im_func.func_code, 1
-    elif not hasattr( receiver, 'func_code'):
-        raise ValueError('unknown reciever type %s %s'%(receiver, type(receiver)))
-    return receiver, receiver.func_code, 0
+        return receiver, receiver.__code__, 1
+    elif not hasattr(receiver, '__code__'):
+        raise ValueError('unknown reciever type %s %s' %
+                         (receiver, type(receiver)))
+    return receiver, receiver.__code__, 0
 
-def robustApply(receiver, *arguments, **named):
+
+def robust_apply(receiver, *arguments, **named):
     """Call receiver with arguments and an appropriate subset of named
     """
-    receiver, codeObject, startIndex = function( receiver )
-    acceptable = codeObject.co_varnames[startIndex+len(arguments):codeObject.co_argcount]
+    receiver, codeObject, startIndex = function(receiver)
+    acceptable = codeObject.co_varnames[startIndex+len(arguments):
+                                        codeObject.co_argcount]
     for name in codeObject.co_varnames[startIndex:startIndex+len(arguments)]:
-        if named.has_key( name ):
+        if name in named:
             raise TypeError(
-                """Argument %r specified both positionally and as a keyword for calling %r"""% (
+                """Argument %r specified both positionally and
+                as a keyword for calling %r""" % (
                     name, receiver,
                 )
             )
