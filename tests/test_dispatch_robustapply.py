@@ -15,6 +15,10 @@ class NotCallable(object):
 def method(): pass
 
 
+def accepts_pos_arg(arg):
+    pass
+
+
 class RobustApplyTest(unittest.TestCase):
 
     def test_function_callable(self):
@@ -32,3 +36,9 @@ class RobustApplyTest(unittest.TestCase):
         def calledFunction(arg1):
             self.assertEqual(arg1, 'test1')
         robust_apply(calledFunction, **named)
+
+    def test_robust_apply_error(self):
+        named = {'arg': 'arg'}
+        args = ['test']
+        with self.assertRaises(TypeError):
+            robust_apply(accepts_pos_arg, *args, **named)
