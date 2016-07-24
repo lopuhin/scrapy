@@ -70,8 +70,12 @@ class SignalManager(object):
         kwargs.setdefault('sender', self.sender)
         signal = self._ensure_signal(signal)
         if not func_accepts_kwargs(receiver):
-            return signal.disconnect(self._patched_receivers[receiver.__repr__()],
-                                     **kwargs)
+            if receiver.__repr__() in self._patched_receivers:
+                disconnected = signal.disconnect(
+                    self._patched_receivers[receiver.__repr__()], **kwargs)
+                if disconnected:
+                    del self._patched_receivers[receiver.__repr__()]
+                return disconnected
         return signal.disconnect(receiver, **kwargs)
 
     def send_catch_log(self, signal, **kwargs):
