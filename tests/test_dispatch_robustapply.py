@@ -42,3 +42,9 @@ class RobustApplyTest(unittest.TestCase):
         args = ['test']
         with self.assertRaises(TypeError):
             robust_apply(accepts_pos_arg, *args, **named)
+
+    def test_robust_apply_filter_args(self):
+        named = {'arg': 'from_named', 'test': 'test'}
+        def calledFunction(arg='from_sign'):
+            self.assertEqual(arg, 'from_named')
+        robust_apply(calledFunction, **named)
