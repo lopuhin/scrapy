@@ -3,7 +3,7 @@ import warnings
 
 from scrapy.utils import signal as _signal
 from scrapy.exceptions import ScrapyDeprecationWarning
-from scrapy.dispatch.robustapply import robust_apply as _robust_apply
+from scrapy.dispatch.utils import robust_apply as _robust_apply
 from scrapy.dispatch.utils import func_accepts_kwargs
 from scrapy.dispatch import Signal as _Signal
 
