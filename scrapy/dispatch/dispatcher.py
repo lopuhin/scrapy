@@ -17,6 +17,8 @@ else:
 
 from scrapy.utils.signal import _IgnoredException
 from scrapy.utils.log import failure_to_exc_info
+from scrapy.utils.project import get_project_settings
+from scrapy.utils.signal import logger
 
 
 def _make_id(target):
@@ -25,10 +27,10 @@ def _make_id(target):
     return id(target)
 NONE_ID = _make_id(None)
 
+
 # A marker for caching
 NO_RECEIVERS = object()
 
-from scrapy.utils.signal import logger
 
 class Signal(object):
 
@@ -99,13 +101,14 @@ class Signal(object):
         """
 
         # If DEBUG is on, check that we got a good receiver
-        # if settings.DEBUG:
-        assert callable(receiver), "Signal receivers must be callable."
-
-        # Check for **kwargs
-        if not func_accepts_kwargs(receiver):
-            raise ValueError(
-                "Signal receivers must accept keyword arguments (**kwargs).")
+        settings = get_project_settings()
+        if settings.get('LOG_ENABLED') \
+                and settings.get('LOG_LEVEL') == 'DEBUG':
+            assert callable(receiver), "Signal receivers must be callable."
+            # Check for **kwargs
+            if not func_accepts_kwargs(receiver):
+               raise ValueError(
+                   "Signal receivers must accept keyword arguments(**kwargs).")
 
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
@@ -222,7 +225,8 @@ class Signal(object):
         dont_log = named.pop('dont_log', _IgnoredException)
         spider = named.get('spider', None)
         responses = []
-        if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
+        if not self.receivers or \
+                self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return responses
 
         # Call each receiver with whatever arguments it can accept.
@@ -305,8 +309,9 @@ class Signal(object):
         receivers = None
         if self.use_caching and not self._dead_receivers:
             receivers = self.sender_receivers_cache.get(sender)
-            # We could end up here with NO_RECEIVERS even if we do check this case in
-            # .send() prior to calling _live_receivers() due to concurrent .send() call.
+            # We could end up here with NO_RECEIVERS even if we do check
+            # this case in .send() prior to calling _live_receivers() due to
+            # concurrent .send() call.
             if receivers is NO_RECEIVERS:
                 return []
         if receivers is None:
