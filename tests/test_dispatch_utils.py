@@ -16,6 +16,8 @@ def method(): pass
 
 
 class CallableKwargs(object):
+    def __init__(self, **kwargs):
+        pass
     def __call__(self, **kwargs):
         pass
 
@@ -34,7 +36,7 @@ class RobustApplyTest(unittest.TestCase):
 
     def test_not_callable(self):
         with self.assertRaises(ValueError):
-            function(NotCallable)
+            function(NotCallable())
 
     def test_robust_apply(self):
         named = {'arg1': 'test1', 'arg2': 'test2'}
@@ -70,6 +72,7 @@ class func_accepts_kwargs_test(unittest.TestCase):
         self.assertTrue(func_accepts_kwargs(accept_kwargs))
         with self.assertRaises(TypeError):
             func_accepts_kwargs(someval)
-        self.assertTrue(func_accepts_kwargs(NotCallable))
-        self.assertFalse(func_accepts_kwargs(Callable))
-        self.assertTrue(func_accepts_kwargs(CallableKwargs))
+        with self.assertRaises(TypeError):
+            func_accepts_kwargs(NotCallable())
+        self.assertFalse(func_accepts_kwargs(Callable()))
+        self.assertTrue(func_accepts_kwargs(CallableKwargs()))
