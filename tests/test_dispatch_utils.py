@@ -68,9 +68,8 @@ class func_accepts_kwargs_test(unittest.TestCase):
         # To test the attribute error case
         someval = 0
         self.assertTrue(func_accepts_kwargs(accept_kwargs))
-        # TODO: The fallback here is that it is assumed that the "receiver"
-        # is callable. Correct behaviour?
-        self.assertTrue(func_accepts_kwargs(someval))
+        with self.assertRaises(TypeError):
+            func_accepts_kwargs(someval)
         self.assertTrue(func_accepts_kwargs(NotCallable))
         self.assertFalse(func_accepts_kwargs(Callable))
         self.assertTrue(func_accepts_kwargs(CallableKwargs))
