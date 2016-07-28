@@ -28,6 +28,9 @@ class BackwardCompatabilityTest(unittest.TestCase):
         self.signals.connect(receiver, new_signal)
         self.assertIsInstance(
             self.signals._signal_proxies[new_signal.__repr__()], Signal)
+        self.signals.connect(receiver, new_signal)
+        # Make sure _ensure_signal makes a copy only once
+        self.assertEqual(len(self.signals._signal_proxies), 1)
 
     def test_patched_receivers(self):
         new_signal = Signal()
