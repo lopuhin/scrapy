@@ -56,8 +56,9 @@ class SignalManager(object):
                           "**kwargs has been deprecated, plese refer "
                           "to the Signals API documentation.",
                           ScrapyDeprecationWarning, stacklevel=2)
-            self._patched_receivers[receiver.__repr__()] = \
-                lambda sender, **kw: _robust_apply(receiver, sender, **kw)
+            if receiver.__repr__() not in self._patched_receivers:
+                self._patched_receivers[receiver.__repr__()] = \
+                    lambda sender, **kw: _robust_apply(receiver, sender, **kw)
             return signal.connect(self._patched_receivers[receiver.__repr__()],
                                   **kwargs)
         return signal.connect(receiver, **kwargs)
