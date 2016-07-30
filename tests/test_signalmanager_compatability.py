@@ -36,6 +36,7 @@ class BackwardCompatabilityTest(unittest.TestCase):
     def test_patched_receivers(self):
         new_signal = Signal()
         self.signals.connect(receiver_no_kwargs, new_signal)
+        self.signals.connect(receiver_no_kwargs, new_signal)
         self.assertTrue(
             func_accepts_kwargs(
                 self.signals._patched_receivers[receiver_no_kwargs.__repr__()]
