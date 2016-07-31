@@ -3,7 +3,6 @@ import gc
 
 from scrapy.signalmanager import SignalManager
 from scrapy.dispatch.utils import func_accepts_kwargs
-from scrapy.dispatch.utils import robust_apply as _robust_apply
 from scrapy.signals import Signal
 
 
@@ -42,14 +41,19 @@ class BackwardCompatabilityTest(unittest.TestCase):
                 self.signals._patched_receivers[receiver_no_kwargs.__repr__()]
             )
         )
+        self.signals.send_catch_log(new_signal)
         self.signals.disconnect(receiver_no_kwargs, new_signal)
         self.signals.connect(receiver, new_signal)
-        self.signals.disconnect(receiver, new_signal)
-        self.signals.disconnect(receiver_no_kwargs, new_signal)
-        self.signals._patched_receivers[receiver_no_kwargs.__repr__()] = \
-            lambda sender, **kw: _robust_apply(receiver, sender, **kw)
-        self.signals.disconnect(receiver, new_signal)
+        self.assertTrue(self.signals.disconnect(receiver, new_signal))
+        self.signals.connect(receiver_no_kwargs, new_signal)
+        recv = self.signals._patched_receivers[receiver_no_kwargs.__repr__()]
+        assert(self.signals.disconnect(receiver_no_kwargs, new_signal))
+        self.signals._patched_receivers[receiver_no_kwargs.__repr__()] = recv
+        self.assertFalse(self.signals.disconnect(receiver_no_kwargs,
+                                                    new_signal))
         del self.signals._patched_receivers[receiver_no_kwargs.__repr__()]
+        self.assertFalse(self.signals.disconnect(receiver_no_kwargs,
+                                                    new_signal))
 
     def test_disconnect_all(self):
         new_signal = object()

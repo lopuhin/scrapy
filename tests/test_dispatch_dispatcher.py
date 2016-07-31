@@ -3,10 +3,14 @@ import sys
 import time
 import unittest
 import weakref
-from types import TracebackType
-from twisted.python.failure import Failure
 import logging
+
+from twisted.python.failure import Failure
+
 from scrapy.dispatch import Signal, receiver
+from scrapy.dispatch.dispatcher import NO_RECEIVERS
+import scrapy.settings.default_settings as default_settings
+from scrapy.exceptions import DontCloseSpider
 
 logging.basicConfig()
 
@@ -43,7 +47,7 @@ a_signal = Signal(providing_args=["val"])
 b_signal = Signal(providing_args=["val"])
 c_signal = Signal(providing_args=["val"])
 d_signal = Signal(providing_args=["val"], use_caching=True)
-
+test_signal = Signal()
 
 class DispatcherTests(unittest.TestCase):
     """Test suite for dispatcher (barely started)"""
@@ -173,6 +177,57 @@ class DispatcherTests(unittest.TestCase):
         a_signal.disconnect(receiver_1)
         self.assertFalse(a_signal.has_listeners())
         self.assertFalse(a_signal.has_listeners(sender=object()))
+
+    def test_debug_logging(self):
+        default_log = default_settings.LOG_ENABLED
+        default_settings.LOG_ENABLED = False
+        def callback():
+            pass
+        try:
+            test_signal.connect(callback, weak=False)
+        except  ValueError:
+            self.fail("Should not raise errors when logging is disabled.")
+        finally:
+            test_signal.disconnect(callback)
+        default_settings.LOG_ENABLED = default_log
+        with self.assertRaises(ValueError):
+            test_signal.connect(callback)
+        self.assertTestIsClean(test_signal)
+        def raise_dont_log(sender, **kwargs):
+            raise DontCloseSpider
+        test_signal.connect(raise_dont_log)
+        named = {'val': 'val', 'dont_log': DontCloseSpider}
+        test_signal.send_robust(self, **named)
+        test_signal.send_robust_deferred(self, **named)
+
+    def test_no_receivers(self):
+        test_signal = Signal()
+        self.assertFalse(test_signal._live_receivers(sender=None))
+        test_signal.send(sender=self)
+        test_signal.send_robust(sender=self)
+        test_signal.send_robust_deferred(sender=self)
+
+    def test_live_receivers(self):
+        test_signal = Signal(use_caching=True)
+        self.assertFalse(test_signal._live_receivers(sender=self))
+        def callback(sender, **kwargs):
+            pass
+        test_signal.receivers = NO_RECEIVERS
+        self.assertFalse(test_signal._live_receivers(sender=self))
+        test_signal.receivers = []
+        test_signal.connect(callback, sender=self, weak=False)
+        self.assertTrue(test_signal._live_receivers(sender=self))
+        # Should be fetched from the cache
+        self.assertTrue(test_signal._live_receivers(sender=self))
+        test_signal.disconnect(callback, sender=self)
+        gc.collect()
+        test_signal = Signal(use_caching=False)
+        test_signal.connect(Callable())
+        def _clear_receivers(*args, **kwargs):
+            pass
+        # Simulate race condition where dead receivers are not cleared
+        test_signal._clear_dead_receivers = _clear_receivers
+        self.assertFalse(test_signal._live_receivers(sender=None))
 
 
 class ReceiverTestCase(unittest.TestCase):
