@@ -4,7 +4,6 @@ import warnings
 import weakref
 import logging
 import six
-from scrapy.exceptions import ScrapyDeprecationWarning
 from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
@@ -137,7 +136,7 @@ class Signal(object):
                 self.receivers.append((lookup_key, receiver))
             self.sender_receivers_cache.clear()
 
-    def disconnect(self, receiver=None, sender=None, weak=None, dispatch_uid=None):
+    def disconnect(self, receiver=None, sender=None, dispatch_uid=None):
         """
         Disconnect receiver from sender for signal.
 
@@ -156,9 +155,6 @@ class Signal(object):
             dispatch_uid
                 the unique identifier of the receiver to disconnect
         """
-        if weak is not None:
-            warnings.warn("Passing `weak` to disconnect has no effect.",
-                          ScrapyDeprecationWarning, stacklevel=2)
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
         else:
