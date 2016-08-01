@@ -18,13 +18,17 @@ class WeakrefBackportsTest(unittest.TestCase):
             WeakMethod({})
 
     def test_weakref_weakmethod_eq(self):
-        hasmethod = HasMethod()
-        reference1 = WeakMethod(hasmethod.method)
-        self.assertEqual(reference1, reference1)
-        self.assertEqual(reference1, reference1)
-        gc.collect()
-        reference2 = WeakMethod(hasmethod.method)
-        self.assertEqual(reference1, reference2)
-        gc.collect()
-        self.assertEqual(reference1, reference2)
-        self.assertNotEqual(reference1, HasMethod.method)
+        has_method_inst = HasMethod()
+        live_receiver = WeakMethod(has_method_inst.method)
+        dead_receiver = WeakMethod(HasMethod().method)
+        self.assertTrue(live_receiver == live_receiver)
+        self.assertFalse(live_receiver == dead_receiver)
+        self.assertFalse(live_receiver == HasMethod.method)
+
+    def test_weakref_weakmethod_neq(self):
+        has_method_inst = HasMethod()
+        live_receiver = WeakMethod(has_method_inst.method)
+        dead_receiver = WeakMethod(HasMethod().method)
+        self.assertFalse(live_receiver != live_receiver)
+        self.assertTrue(live_receiver != dead_receiver)
+        self.assertTrue(live_receiver != HasMethod.method)
