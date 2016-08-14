@@ -30,6 +30,9 @@ NONE_ID = _make_id(None)
 # A marker for caching
 NO_RECEIVERS = object()
 
+# Get the settings(for LOG_ENABLED and LOG_LEVEL)
+settings = get_project_settings()
+
 
 class Signal(object):
 
@@ -99,8 +102,7 @@ class Signal(object):
                 anything hashable.
         """
 
-        # If DEBUG is on, check that we got a good receiver
-        settings = get_project_settings()
+        If DEBUG is on, check that we got a good receiver
         if settings.get('LOG_ENABLED') \
                 and settings.get('LOG_LEVEL') == 'DEBUG':
             assert callable(receiver), "Signal receivers must be callable."
