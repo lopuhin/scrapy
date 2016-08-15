@@ -190,8 +190,9 @@ class DispatcherTests(unittest.TestCase):
         finally:
             test_signal.disconnect(callback)
         default_settings.LOG_ENABLED = default_log
-        with self.assertRaises(ValueError):
-            test_signal.connect(callback)
+        # with self.assertRaises(ValueError):
+        test_signal.connect(callback)
+        test_signal.disconnect(callback)
         self.assertTestIsClean(test_signal)
         def raise_dont_log(sender, **kwargs):
             raise DontCloseSpider
@@ -228,6 +229,40 @@ class DispatcherTests(unittest.TestCase):
         # Simulate race condition where dead receivers are not cleared
         test_signal._clear_dead_receivers = _clear_receivers
         self.assertFalse(test_signal._live_receivers(sender=None))
+
+    def test_deprecated_receivers(self):
+        test_signal = Signal()
+        self.assertFalse(test_signal._live_receivers(sender=self))
+        def callback(arg1='test', arg2='test'):
+            self.assertEqual(arg1, 'test1')
+            self.assertEqual(arg2, 'test2')
+        test_signal.connect(callback)
+        named = {'arg1': 'test1', 'arg2': 'test2'}
+        test_signal.send_robust(sender=self, **named)
+        test_signal.send(sender=self, **named)
+        test_signal.disconnect(callback)
+        self.assertTestIsClean(test_signal)
+
+
+    def test_clear_dead_receivers_race(self):
+        a = Callable()
+        test_signal.connect(a)
+        test_signal.send(sender=self, val='test')
+        del test_signal.receiver_accepts_kwargs[id(a)]
+        del a
+        gc.collect()
+        test_signal.send(sender=self, val='test')
+        self.assertTestIsClean(test_signal)
+
+    def test_clear_dead_receivers(self):
+        test_signal = Signal()
+        a = Callable()
+        test_signal.connect(a)
+        del a
+        gc.collect()
+        test_signal.send_robust(sender=self, val='test')
+        self.assertFalse(test_signal.receiver_accepts_kwargs)
+        self.assertTestIsClean(test_signal)
 
 
 class ReceiverTestCase(unittest.TestCase):

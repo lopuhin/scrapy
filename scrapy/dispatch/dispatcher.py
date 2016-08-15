@@ -3,8 +3,8 @@ import threading
 import warnings
 import weakref
 import logging
+
 import six
-from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
@@ -16,8 +16,10 @@ else:
 
 from scrapy.utils.signal import _IgnoredException
 from scrapy.utils.log import failure_to_exc_info
-from scrapy.utils.project import get_project_settings
 from scrapy.utils.signal import logger
+from scrapy.dispatch.utils.inspect import func_accepts_kwargs
+from scrapy.dispatch.utils import robust_apply
+from scrapy.exceptions import ScrapyDeprecationWarning
 
 
 def _make_id(target):
@@ -29,9 +31,6 @@ NONE_ID = _make_id(None)
 
 # A marker for caching
 NO_RECEIVERS = object()
-
-# Get the settings(for LOG_ENABLED and LOG_LEVEL)
-settings = get_project_settings()
 
 
 class Signal(object):
@@ -66,6 +65,7 @@ class Signal(object):
         # .disconnect() is called and populated on send().
         self.sender_receivers_cache = weakref.WeakKeyDictionary(
         ) if use_caching else {}
+        self.receiver_accepts_kwargs = {}
         self._dead_receivers = False
 
     def connect(self, receiver, sender=None, weak=True, dispatch_uid=None):
@@ -101,15 +101,16 @@ class Signal(object):
                 of a receiver. This will usually be a string, though it may be
                 anything hashable.
         """
-
-        If DEBUG is on, check that we got a good receiver
-        if settings.get('LOG_ENABLED') \
-                and settings.get('LOG_LEVEL') == 'DEBUG':
-            assert callable(receiver), "Signal receivers must be callable."
-            # Check for **kwargs
-            if not func_accepts_kwargs(receiver):
-               raise ValueError(
-                   "Signal receivers must accept keyword arguments(**kwargs).")
+        assert callable(receiver), "Signal receivers must be callable."
+        # Check for **kwargs
+        if not func_accepts_kwargs(receiver):
+           warnings.warn("The use of handlers that don't accept "
+                          "**kwargs has been deprecated, plese refer "
+                          "to the Signals API documentation.",
+                          ScrapyDeprecationWarning, stacklevel=3)
+           self.receiver_accepts_kwargs[_make_id(receiver)] = False
+        else:
+            self.receiver_accepts_kwargs[_make_id(receiver)] = True
 
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
@@ -172,6 +173,9 @@ class Signal(object):
                     del self.receivers[index]
                     break
             self.sender_receivers_cache.clear()
+            if disconnected:
+                if _make_id(receiver) in self.receiver_accepts_kwargs:
+                    del self.receiver_accepts_kwargs[_make_id(receiver)]
         return disconnected
 
     def has_listeners(self, sender=None):
@@ -200,7 +204,10 @@ class Signal(object):
             return responses
 
         for receiver in self._live_receivers(sender):
-            response = receiver(signal=self, sender=sender, **named)
+            if self.receiver_accepts_kwargs[_make_id(receiver)]:
+                response = receiver(signal=self, sender=sender, **named)
+            else:
+                response = robust_apply(receiver, sender=sender, **named)
             responses.append((receiver, response))
         return responses
 
@@ -231,7 +238,10 @@ class Signal(object):
         # Return a list of tuple pairs [(receiver, response), ... ].
         for receiver in self._live_receivers(sender):
             try:
-                response = receiver(signal=self, sender=sender, **named)
+                if self.receiver_accepts_kwargs[_make_id(receiver)]:
+                    response = receiver(signal=self, sender=sender, **named)
+                else:
+                    response = robust_apply(receiver, sender=sender, **named)
                 if isinstance(response, Deferred):
                     logger.error("Cannot return deferreds from signal handler: %(receiver)s",
                                  {'receiver': receiver}, extra={'spider': spider})
@@ -292,9 +302,11 @@ class Signal(object):
             self._dead_receivers = False
             new_receivers = []
             for r in self.receivers:
-                if isinstance(r[1], weakref.ReferenceType) and r[1]() is None:
-                    continue
-                new_receivers.append(r)
+                if isinstance(r[1], weakref.ReferenceType) and r[1]() is not None:
+                    new_receivers.append(r)
+                else:
+                    if r[0][0] in self.receiver_accepts_kwargs:
+                        del self.receiver_accepts_kwargs[r[0][0]]
             self.receivers = new_receivers
 
     def _live_receivers(self, sender):
