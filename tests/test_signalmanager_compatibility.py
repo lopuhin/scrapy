@@ -1,5 +1,4 @@
 import unittest
-import gc
 
 from scrapy.signalmanager import SignalManager
 from scrapy.dispatch.utils import func_accepts_kwargs
@@ -14,13 +13,10 @@ def receiver_no_kwargs():
     pass
 
 
-class BackwardCompatabilityTest(unittest.TestCase):
+class BackwardCompatibilityTest(unittest.TestCase):
 
     def setUp(self):
         self.signals = SignalManager()
-
-    def tearDown(self):
-        gc.collect()
 
     def test_signal_proxies(self):
         new_signal = object()
@@ -34,7 +30,9 @@ class BackwardCompatabilityTest(unittest.TestCase):
         self.assertFalse(
             self.signals._signal_proxies[new_signal].receivers)
 
-    def test_disconnect_all(self):
+    def test_disconnect_all_compatibility(self):
+        # if this is working then SignalManager._ensure_signal will
+        # be working fine everywhere
         new_signal = object()
         self.signals.connect(receiver, new_signal)
         self.signals.disconnect_all(new_signal)
