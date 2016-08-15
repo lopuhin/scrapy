@@ -181,6 +181,10 @@ class Signal(object):
     def has_listeners(self, sender=None):
         return bool(self._live_receivers(sender))
 
+    def disconnect_all(self, sender):
+        for receiver in self._live_receivers(sender=sender):
+            self.disconnect(receiver=receiver, sender=sender)
+
     def send(self, sender, **named):
         """
         Send signal from sender to all connected receivers.

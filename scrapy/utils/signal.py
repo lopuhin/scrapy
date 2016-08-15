@@ -31,5 +31,4 @@ def disconnect_all(signal, sender=None):
     """Disconnect all signal handlers. Useful for cleaning up after running
     tests
     """
-    for receiver in signal._live_receivers(sender=sender):
-        signal.disconnect(receiver=receiver, sender=sender)
+    signal.disconnect_all(sender)
