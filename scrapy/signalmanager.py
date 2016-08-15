@@ -21,15 +21,12 @@ class SignalManager(object):
         """
         if isinstance(signal, Signal):
             return signal
-        # Ensure we got at least an old style signal
-        warnings.warn("Signals in scrapy are no longer instances of the basic "
-                      "python object but rather the Signal class defined in "
-                      "the scrapy.dispatch module. Please refer to the Signal "
-                      "API documentation.",
+        warnings.warn("Signals in scrapy are no longer instances of the "
+                      "generic python object rather should be instances of "
+                      "`scrapy.dispatch.Signal`. Please refer to the "
+                      "Signal API documentation for more information.",
                       ScrapyDeprecationWarning, stacklevel=2)
-        if signal not in self._signal_proxies:
-            self._signal_proxies.setdefault(signal, Signal())
-        return self._signal_proxies[signal]
+        return self._signal_proxies.setdefault(signal, Signal())
 
     def connect(self, receiver, signal, **kwargs):
         """
