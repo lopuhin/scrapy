@@ -106,7 +106,7 @@ class CrawlerRun(object):
                       self.geturl("/redirect")]  # a duplicate
 
         for name, signal in vars(signals).items():
-            if not name.startswith('_') and name is not 'Signal':
+            if not name.startswith('_') and name != 'Signal':
                 signal.connect(self.record_signal)
 
         self.crawler = get_crawler(self.spider_class)
