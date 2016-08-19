@@ -9,17 +9,16 @@ from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
 
-if six.PY2 or sys.version_info >= (3,3) and sys.version_info < (3, 4):
-    from .weakref_backports import WeakMethod
-else:
-    from weakref import WeakMethod
-
 from scrapy.utils.signal import _IgnoredException
 from scrapy.utils.log import failure_to_exc_info
 from scrapy.utils.signal import logger
 from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from scrapy.dispatch.utils import robust_apply
 from scrapy.exceptions import ScrapyDeprecationWarning
+if six.PY2 or sys.version_info >= (3, 3) and sys.version_info < (3, 4):
+    from .weakref_backports import WeakMethod
+else:
+    from weakref import WeakMethod
 
 
 def _make_id(target):
@@ -48,7 +47,7 @@ class Signal(object):
         """
         Create a new signal.
 
-        providing_args
+        :param providing_args
             A list of the arguments this signal can pass along in a send()
             call.
         """
@@ -72,43 +71,37 @@ class Signal(object):
         """
         Connect receiver to sender for signal.
 
-        Arguments:
+        :param receiver: A function or an instance method which is
+                         to receive signals. If a receiver is connected
+                         with a dispatch_uid argument, it will not be added
+                         if another receiver was already connected that
+                         dispatch_uid.
+        :type receiver: function or instance, must be hashable object with
 
-            receiver
-                A function or an instance method which is to receive signals.
-                Receivers must be hashable objects.
+        :param sender: The sender to which the receiver should respond.
+                       Must either be a Python object, or None to receive
+                       events from any sender.
+        :type sender: object, None
 
-                If weak is True, then receiver must be weak referenceable.
+        :param weak: Whether to use weak references to the receiver. By
+                     default, the module will attempt to use weak
+                     references to the receiver objects. If this parameter
+                     is false, then strong references will be used.
+        :type weak: Boolean
 
-                Receivers must be able to accept keyword arguments.
-
-                If a receiver is connected with a dispatch_uid argument, it
-                will not be added if another receiver was already connected
-                with that dispatch_uid.
-
-            sender
-                The sender to which the receiver should respond. Must either be
-                of type Signal, or None to receive events from any sender.
-
-            weak
-                Whether to use weak references to the receiver. By default, the
-                module will attempt to use weak references to the receiver
-                objects. If this parameter is false, then strong references
-                will be used.
-
-            dispatch_uid
-                An identifier used to uniquely identify a particular instance
-                of a receiver. This will usually be a string, though it may be
-                anything hashable.
+        :param dispatch_uid: An identifier used to uniquely identify a
+                             particular instance of a receiver.
+        :type dispatch_uid: string, though it may be anything
+                            hashable.
         """
         assert callable(receiver), "Signal receivers must be callable."
         # Check for **kwargs
         if not func_accepts_kwargs(receiver):
-           warnings.warn("The use of handlers that don't accept "
+            warnings.warn("The use of handlers that don't accept "
                           "**kwargs has been deprecated, plese refer "
                           "to the Signals API documentation.",
                           ScrapyDeprecationWarning, stacklevel=3)
-           self.receiver_accepts_kwargs[_make_id(receiver)] = False
+            self.receiver_accepts_kwargs[_make_id(receiver)] = False
         else:
             self.receiver_accepts_kwargs[_make_id(receiver)] = True
 
@@ -143,20 +136,24 @@ class Signal(object):
         """
         Disconnect receiver from sender for signal.
 
-        If weak references are used, disconnect need not be called. The receiver
-        will be remove from dispatch automatically.
+        If weak references are used, disconnect need not be called. The
+        receiver will be remove from dispatch automatically.
 
-        Arguments:
+        :param receiver: The registered receiver to disconnect. May be none if
+                         dispatch_uid is specified.
+        :type receiver: A function or an instance method which was registered
+                        to receive signals.
 
-            receiver
-                The registered receiver to disconnect. May be none if
-                dispatch_uid is specified.
+        :param sender: The registered sender to disconnect
+        :type sender: Any python object, registered as a sender using connect
+                      previously.
 
-            sender
-                The registered sender to disconnect
+        :param dispatch_uid: The unique identifier of the receiver to
+                             disconnect
+        :type dispatch_uid: string, though it may be anything hashable.
 
-            dispatch_uid
-                the unique identifier of the receiver to disconnect
+        :return: True if disconnected, False in case of no disconnection due to
+                 receiver being disconnected alraedy, etc.
         """
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
@@ -174,8 +171,7 @@ class Signal(object):
                     break
             self.sender_receivers_cache.clear()
             if disconnected:
-                if _make_id(receiver) in self.receiver_accepts_kwargs:
-                    del self.receiver_accepts_kwargs[_make_id(receiver)]
+                self.receiver_accepts_kwargs.pop([_make_id(receiver)], None)
         return disconnected
 
     def has_listeners(self, sender=None):
@@ -189,47 +185,56 @@ class Signal(object):
         """
         Send signal from sender to all connected receivers.
 
-        If any receiver raises an error, the error propagates back through send,
-        terminating the dispatch loop. So it's possible that all receivers
-        won't be called if an error is raised.
+        If any receiver raises an error, the error propagates back through
+        send, terminating the dispatch loop. So it's possible that all
+        receivers won't be called if an error is raised.
 
-        Arguments:
+        :param sender: The sender of the signal.
+                       Either a specific object or None.
 
-            sender
-                The sender of the signal. Either a specific object or None.
 
-            named
-                Named arguments which will be passed to receivers.
+        :param dict named:   Named arguments which will be passed to
+                             receivers, These arguments must be a subset of
+                             the argument names defined in providing_args.
 
         Returns a list of tuple pairs [(receiver, response), ... ].
         """
         responses = []
-        if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
+        if not self.receivers or \
+                self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return responses
 
         for receiver in self._live_receivers(sender):
             if self.receiver_accepts_kwargs[_make_id(receiver)]:
                 response = receiver(signal=self, sender=sender, **named)
             else:
-                response = robust_apply(receiver, sender=sender, **named)
+                response = robust_apply(signal=self, receiver,
+                                        sender=sender, **named)
             responses.append((receiver, response))
         return responses
 
     def send_robust(self, sender, **named):
         """
-        Send signal from sender to all connected receivers catching errors.
-        Modified to return Failures.
-        Arguments:
+        Send signal from sender to all connected receivers catching and logging
+        errors.
 
-            sender
-                The sender of the signal. Can be any python object (normally one
-                registered with a connect if you actually want something to
-                occur).
+        If any receiver raises an error, it is caught and logged before
+        returning a twisted.python.Failure instance.
 
-            named
-                Named arguments which will be passed to receivers. These
-                arguments must be a subset of the argument names defined in
-                providing_args.
+        Robust in the sense that even if an error is encountered, all receivers
+        will be called.
+
+        The receivers here cannot return twisted `deferred` instances.
+
+        :param sender: The sender of the signal.
+        :type sender: Can be any python object (normally one registered with a
+                      connect if you actually want something to occur).
+
+        :param dict named:  Named arguments which will be passed to receivers.
+                            These arguments must be a subset of the argument
+                            names defined in providing_args.
+
+        :return: A list of tuple pairs [(receiver, response), ... ].
         """
         dont_log = named.pop('dont_log', _IgnoredException)
         spider = named.get('spider', None)
@@ -245,10 +250,13 @@ class Signal(object):
                 if self.receiver_accepts_kwargs[_make_id(receiver)]:
                     response = receiver(signal=self, sender=sender, **named)
                 else:
-                    response = robust_apply(receiver, sender=sender, **named)
+                    response = robust_apply(signal=self, receiver,
+                                            sender=sender, **named)
                 if isinstance(response, Deferred):
-                    logger.error("Cannot return deferreds from signal handler: %(receiver)s",
-                                 {'receiver': receiver}, extra={'spider': spider})
+                    logger.error("Cannot return deferreds from signal"
+                                 " handler: %(receiver)s",
+                                 {'receiver': receiver},
+                                 extra={'spider': spider})
             except dont_log:
                 response = Failure()
             except Exception:
@@ -261,19 +269,21 @@ class Signal(object):
 
     def send_robust_deferred(self, sender, **named):
         """
-        Send signal from sender to all connected receivers catching errors.
-        Modified to work with functionons returning twisted deferreds.
-        Arguments:
+        Send signal from sender to all connected receivers catching and logging
+        errors. Like send robust but works with receivers that return twisted
+        `deffered` instances.
 
-            sender
-                The sender of the signal. Can be anything python object
-                (normally one registered with a connect if you actually
-                 want something to occur).
+        :param sender: The sender of the signal.
+        :type sender: Any python object
+                      (normally one registered with a connect if you actually
+                      want something to occur).
 
-            named
-                Named arguments which will be passed to receivers. These
-                arguments must be a subset of the argument names defined in
-                providing_args.
+        :param dict named: Named arguments which will be passed to receivers.
+                           These arguments must be a subset of the argument
+                           names defined in providing_args.
+
+        :return: a `DeferredList` instance that fires with a list of tuple
+        pairs of the form [(receiver, response)..].
         """
         dont_log = named.pop('dont_log', _IgnoredException)
 
@@ -286,7 +296,8 @@ class Signal(object):
                              extra={'spider': spider})
             return failure
         dfds = []
-        if not self.receivers or self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
+        if not self.receivers or \
+                self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return dfds
         # Call each receiver with whatever arguments it can accept.
         # Return a list of tuple pairs [(receiver, response), ... ].
@@ -306,7 +317,8 @@ class Signal(object):
             self._dead_receivers = False
             new_receivers = []
             for r in self.receivers:
-                if isinstance(r[1], weakref.ReferenceType) and r[1]() is not None:
+                if not(isinstance(r[1], weakref.ReferenceType) and
+                        r[1]() is None):
                     new_receivers.append(r)
                 else:
                     if r[0][0] in self.receiver_accepts_kwargs:
