@@ -99,20 +99,18 @@ class Signal(object):
         """
         assert callable(receiver), "Signal receivers must be callable."
         # Check for **kwargs
+        accepts_kwargs = True
         if not func_accepts_kwargs(receiver):
             warnings.warn("The use of handlers that don't accept "
                           "**kwargs has been deprecated, plese refer "
                           "to the Signals API documentation.",
                           ScrapyDeprecationWarning, stacklevel=3)
-            self.receiver_accepts_kwargs[_make_id(receiver)] = False
-        else:
-            self.receiver_accepts_kwargs[_make_id(receiver)] = True
-
+            accepts_kwargs = False
         if dispatch_uid:
             lookup_key = (dispatch_uid, _make_id(sender))
         else:
             lookup_key = (_make_id(receiver), _make_id(sender))
-
+        accepts_kwargs_lookup = _make_id(receiver)
         if weak:
             ref = weakref.ref
             receiver_object = receiver
@@ -133,6 +131,7 @@ class Signal(object):
                     break
             else:
                 self.receivers.append((lookup_key, receiver))
+                self.receiver_accepts_kwargs[accepts_kwargs_lookup] = accepts_kwargs
             self.sender_receivers_cache.clear()
 
     def disconnect(self, receiver=None, sender=None, dispatch_uid=None):
@@ -206,7 +205,6 @@ class Signal(object):
         if not self.receivers or \
                 self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return responses
-
         for receiver in self._live_receivers(sender):
             if self.receiver_accepts_kwargs[_make_id(receiver)]:
                 response = receiver(signal=self, sender=sender, **named)
@@ -245,7 +243,6 @@ class Signal(object):
         if not self.receivers or \
                 self.sender_receivers_cache.get(sender) is NO_RECEIVERS:
             return responses
-
         # Call each receiver with whatever arguments it can accept.
         # Return a list of tuple pairs [(receiver, response), ... ].
         for receiver in self._live_receivers(sender):
@@ -289,7 +286,6 @@ class Signal(object):
         pairs of the form [(receiver, response)..].
         """
         dont_log = named.pop('dont_log', _IgnoredException)
-
         def logerror(failure, recv):
             spider = named.get('spider', None)
             if dont_log is None or not isinstance(failure.value, dont_log):
