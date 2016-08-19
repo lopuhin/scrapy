@@ -180,7 +180,7 @@ class Signal(object):
     def has_listeners(self, sender=None):
         return bool(self._live_receivers(sender))
 
-    def disconnect_all(self, sender):
+    def disconnect_all(self, sender=None):
         for receiver in self._live_receivers(sender=sender):
             self.disconnect(receiver=receiver, sender=sender)
 
@@ -324,8 +324,7 @@ class Signal(object):
                         r[1]() is None):
                     new_receivers.append(r)
                 else:
-                    if r[0][0] in self.receiver_accepts_kwargs:
-                        del self.receiver_accepts_kwargs[r[0][0]]
+                    self.receiver_accepts_kwargs.pop(r[0][0], None)
             self.receivers = new_receivers
 
     def _live_receivers(self, sender):
