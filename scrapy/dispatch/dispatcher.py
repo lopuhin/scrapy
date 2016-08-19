@@ -171,7 +171,7 @@ class Signal(object):
                     break
             self.sender_receivers_cache.clear()
             if disconnected:
-                self.receiver_accepts_kwargs.pop([_make_id(receiver)], None)
+                self.receiver_accepts_kwargs.pop(_make_id(receiver), None)
         return disconnected
 
     def has_listeners(self, sender=None):
@@ -208,7 +208,7 @@ class Signal(object):
             if self.receiver_accepts_kwargs[_make_id(receiver)]:
                 response = receiver(signal=self, sender=sender, **named)
             else:
-                response = robust_apply(signal=self, receiver,
+                response = robust_apply(receiver, signal=self,
                                         sender=sender, **named)
             responses.append((receiver, response))
         return responses
@@ -250,7 +250,7 @@ class Signal(object):
                 if self.receiver_accepts_kwargs[_make_id(receiver)]:
                     response = receiver(signal=self, sender=sender, **named)
                 else:
-                    response = robust_apply(signal=self, receiver,
+                    response = robust_apply(receiver, signal=self,
                                             sender=sender, **named)
                 if isinstance(response, Deferred):
                     logger.error("Cannot return deferreds from signal"
