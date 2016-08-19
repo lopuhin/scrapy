@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import warnings
 
-from scrapy.utils import signal as _signal
 from scrapy.dispatch import Signal
 from scrapy.exceptions import ScrapyDeprecationWarning
 
@@ -65,7 +64,7 @@ class SignalManager(object):
         """
         kwargs.setdefault('sender', self.sender)
         signal = self._ensure_signal(signal)
-        return _signal.send_catch_log(signal, **kwargs)
+        return signal.send_catch_log(**kwargs)
 
     def send_catch_log_deferred(self, signal, **kwargs):
         """
@@ -82,7 +81,7 @@ class SignalManager(object):
         """
         kwargs.setdefault('sender', self.sender)
         signal = self._ensure_signal(signal)
-        return _signal.send_catch_log_deferred(signal, **kwargs)
+        return signal.send_catch_log_deferred(**kwargs)
 
     def disconnect_all(self, signal, **kwargs):
         """
@@ -93,4 +92,4 @@ class SignalManager(object):
         """
         kwargs.setdefault('sender', self.sender)
         signal = self._ensure_signal(signal)
-        return _signal.disconnect_all(signal, **kwargs)
+        return signal.disconnect_all(**kwargs)

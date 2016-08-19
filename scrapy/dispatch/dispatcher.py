@@ -9,9 +9,7 @@ from six.moves import range
 from twisted.internet.defer import maybeDeferred, DeferredList, Deferred
 from twisted.python.failure import Failure
 
-from scrapy.utils.signal import _IgnoredException
 from scrapy.utils.log import failure_to_exc_info
-from scrapy.utils.signal import logger
 from scrapy.dispatch.utils.inspect import func_accepts_kwargs
 from scrapy.dispatch.utils import robust_apply
 from scrapy.exceptions import ScrapyDeprecationWarning
@@ -27,9 +25,14 @@ def _make_id(target):
     return id(target)
 NONE_ID = _make_id(None)
 
+logger = logging.getLogger(__name__)
 
 # A marker for caching
 NO_RECEIVERS = object()
+
+
+class _IgnoredException(Exception):
+    pass
 
 
 class Signal(object):
@@ -213,7 +216,7 @@ class Signal(object):
             responses.append((receiver, response))
         return responses
 
-    def send_robust(self, sender, **named):
+    def send_catch_log(self, sender, **named):
         """
         Send signal from sender to all connected receivers catching and logging
         errors.
@@ -221,8 +224,8 @@ class Signal(object):
         If any receiver raises an error, it is caught and logged before
         returning a twisted.python.Failure instance.
 
-        Robust in the sense that even if an error is encountered, all receivers
-        will be called.
+        More robust than send in that even if an error is encountered, all
+        receivers will still be called.
 
         The receivers here cannot return twisted `deferred` instances.
 
@@ -267,7 +270,7 @@ class Signal(object):
             responses.append((receiver, response))
         return responses
 
-    def send_robust_deferred(self, sender, **named):
+    def send_catch_log_deferred(self, sender, **named):
         """
         Send signal from sender to all connected receivers catching and logging
         errors. Like send robust but works with receivers that return twisted
