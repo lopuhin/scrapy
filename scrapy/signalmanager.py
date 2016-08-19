@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import warnings
 
 from scrapy.utils import signal as _signal
-from scrapy.dispatch import Signal as Signal
+from scrapy.dispatch import Signal
 from scrapy.exceptions import ScrapyDeprecationWarning
 
 
