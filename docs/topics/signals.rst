@@ -13,8 +13,19 @@ Even though signals provide several arguments, the handlers that catch them
 don't need to accept all of them - the signal dispatching mechanism will only
 deliver the arguments that the handler receives.
 
+Signals underwent a major refactoring with an eye towards speed. Although still backwards
+compatible, receivers now need to have a ``**kwargs`` argument i.e. all
+receivers should now accept a variable keyword args param. We request that you
+make sure all your receivers follow this contract.
+
 You can connect to signals (or send your own) through the
 :ref:`topics-api-signals`.
+
+Connecting receivers to Signals
+================================
+
+Using connect method of the signalmanager
+-----------------------------------------
 
 Here is a simple example showing how you can catch signals and perform some action:
 ::
@@ -39,12 +50,41 @@ Here is a simple example showing how you can catch signals and perform some acti
             return spider
 
 
-        def spider_closed(self, spider):
+        def spider_closed(self, spider, **named):
             spider.logger.info('Spider closed: %s', spider.name)
 
 
         def parse(self, response):
             pass
+
+Using the receiver decorator
+----------------------------
+
+An alternate way to connect to a signal is exposed by the  :func:`scrapy.dispatch.receiver`
+decorator.
+
+::
+
+    from scrapy import signals
+    from scrapy import Spider
+    from scrapy.dispatch import receiver
+
+
+    class DmozSpider(Spider):
+        name = "dmoz"
+        allowed_domains = ["dmoz.org"]
+        start_urls = [
+            "http://www.dmoz.org/Computers/Programming/Languages/Python/Books/",
+            "http://www.dmoz.org/Computers/Programming/Languages/Python/Resources/",
+        ]
+
+        def parse(self, response):
+            pass
+
+
+    @receiver(signals.spider_closed)
+    def spider_closed(spider, **kwargs):
+        spider.logger.info('Spider closed: %s', spider.name)
 
 
 Deferred signal handlers

@@ -37,14 +37,7 @@ class _IgnoredException(Exception):
 
 class Signal(object):
 
-    """
-    Base class for all signals
-
-    Internal attributes:
-
-        receivers
-            { receiverkey (id) : weakref(receiver) }
-    """
+    """Base class for all signals"""
 
     def __init__(self, providing_args=None, use_caching=False):
         """
@@ -220,12 +213,12 @@ class Signal(object):
         errors.
 
         If any receiver raises an error, it is caught and logged before
-        returning a twisted.python.Failure instance.
+        returning a ``twisted.python.Failure`` instance.
 
         More robust than send in that even if an error is encountered, all
         receivers will still be called.
 
-        The receivers here cannot return twisted `deferred` instances.
+        The receivers here cannot return deferred instances.
 
         :param sender: The sender of the signal.
         :type sender: Can be any python object (normally one registered with a
@@ -270,20 +263,21 @@ class Signal(object):
     def send_catch_log_deferred(self, sender, **named):
         """
         Send signal from sender to all connected receivers catching and logging
-        errors. Like send robust but works with receivers that return twisted
-        `deffered` instances.
+        errors. Works with receivers that return twisted `deferred`_
+        instances.
 
         :param sender: The sender of the signal.
-        :type sender: Any python object
-                      (normally one registered with a connect if you actually
-                      want something to occur).
+        :type sender: Any python object, normally one registered with a connect
+                      if you actually want something to occur.
 
         :param dict named: Named arguments which will be passed to receivers.
                            These arguments must be a subset of the argument
                            names defined in providing_args.
 
-        :return: a `DeferredList` instance that fires with a list of tuple
-        pairs of the form [(receiver, response)..].
+        :return: a DeferredList instance that fires with a list of tuple
+                 pairs of the form [(receiver, response)..].
+
+        .. _deferred: http://twistedmatrix.com/documents/current/core/howto/defer.html # noqa
         """
         dont_log = named.pop('dont_log', _IgnoredException)
         def logerror(failure, recv):
@@ -378,11 +372,11 @@ def receiver(signal, **kwargs):
     A decorator for connecting receivers to signals. Used by passing in the
     signal (or list of signals) and keyword arguments to connect::
 
-        @receiver(post_save, sender=MyModel)
+        @receiver(spider_closed, sender=None)
         def signal_receiver(sender, **kwargs):
             ...
 
-        @receiver([post_save, post_delete], sender=MyModel)
+        @receiver([spider_closed, engine_stopped], sender=spider)
         def signals_receiver(sender, **kwargs):
             ...
     """
