@@ -40,6 +40,9 @@ class SignalManager(object):
 
         :param signal: the signal to connect to
         :type signal: object
+
+        :param weak: Whether to use a weak reference to this receiver
+        :type weak: boolean
         """
         kwargs.setdefault('sender', self.sender)
         signal = self._ensure_signal(signal)

@@ -13,8 +13,8 @@ Even though signals provide several arguments, the handlers that catch them
 don't need to accept all of them - the signal dispatching mechanism will only
 deliver the arguments that the handler receives.
 
-Signals underwent a major refactoring with an eye towards speed. Although still backwards
-compatible, receivers now need to have a ``**kwargs`` argument i.e. all
+Signals underwent a major refactoring with an eye towards speed. Although still
+backwards compatible, receivers now need to have a ``**kwargs`` argument i.e. all
 receivers should now accept a variable keyword args param. We request that you
 make sure all your receivers follow this contract.
 
@@ -95,7 +95,7 @@ Even though the actual signaling logic is in methods of
 :class:`scrapy.dispatch.Signal`, it is strongly recommended that you perform
 all signal opreations by routing your signals through
 :class:`scrapy.signalmanager.SignalManager` as any change in the signal backend
-will not break the :ref:`topics-api-signals`(signalmanager API).The
+will not break the :ref:`topics-api-signals` (signalmanager API).The
 :ref:`topics-api-dispatch` is still however documented for reference. Here is a
 simple example of how to create a custom signal and connect receivers to it.
 
