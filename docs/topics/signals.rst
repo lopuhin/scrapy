@@ -87,6 +87,60 @@ decorator.
         spider.logger.info('Spider closed: %s', spider.name)
 
 
+Defining custom signals
+=======================
+
+Signals in scrapy are instances of the :class:`scrapy.dispatch.Signal` class.
+Even though the actual signaling logic is in methods of 
+:class:`scrapy.dispatch.Signal`, it is strongly recommended that you perform
+all signal opreations by routing your signals through
+:class:`scrapy.signalmanager.SignalManager` as any change in the signal backend
+will not break the :ref:`topics-api-signals`(signalmanager API).The
+:ref:`topics-api-dispatch` is still however documented for reference. Here is a
+simple example of how to create a custom signal and connect receivers to it.
+
+The ``providing_args`` is a list of the names of arguments the signal will
+provide to listeners. This is purely documentational, however, as there is
+nothing that checks thatthe signal actually provides these arguments to its
+listeners.
+
+::
+    
+    from scrapy import Spider
+    from scrapy import signals
+    from scrapy.dispatch import Signal
+
+    # Defining a signal that will inform all connected receivers that parsing
+    # has been completed
+    parse_completed = Signal(providing_args=['url'])
+
+
+    class DmozSpider(Spider):
+        name = "dmoz"
+        allowed_domains = ["dmoz.org"]
+        start_urls = [
+            "http://www.dmoz.org/Computers/Programming/Languages/Python/Books/",
+            "http://www.dmoz.org/Computers/Programming/Languages/Python/Resources/",
+        ]
+
+        @classmethod
+        def from_crawler(cls, crawler, *args, **kwargs):
+            spider = super(DmozSpider, cls).from_crawler(crawler, *args, **kwargs)
+            crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
+            crawler.signals.connect(spider.parse_successful, signal=parse_completed)
+            return spider
+
+        def spider_closed(self, spider, **named):
+            spider.logger.info('Spider closed: %s', spider.name)
+
+        def parse(self, response):
+            # Parse the html
+            self.crawler.signals.send_catch_log(parse_completed, url=response.url)
+
+        def parse_successful(self, sender=None, **kwargs):
+            self.logger.info('Successfully parsed: %s', kwargs['url'])
+
+
 Deferred signal handlers
 ========================
 
