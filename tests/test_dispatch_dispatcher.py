@@ -202,6 +202,7 @@ class DispatcherTests(unittest.TestCase):
             pass
         # Simulate race condition where dead receivers are not cleared
         test_signal._clear_dead_receivers = _clear_receivers
+        garbage_collect()
         self.assertFalse(test_signal._live_receivers(sender=None))
 
     def test_deprecated_receivers(self):
