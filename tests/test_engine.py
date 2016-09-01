@@ -124,7 +124,7 @@ class CrawlerRun(object):
     def stop(self, **kw):
         self.port.stopListening()
         for name, signal in vars(signals).items():
-            if not name.startswith('_') and name is not 'Signal':
+            if not name.startswith('_') and name != 'Signal':
                 disconnect_all(signal)
         self.deferred.callback(None)
 
