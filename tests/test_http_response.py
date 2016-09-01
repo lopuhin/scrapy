@@ -223,9 +223,9 @@ class TextResponseTest(BaseResponseTest):
     def test_invalid_utf8_encoded_body_with_valid_utf8_BOM(self):
         r6 = self.response_class("http://www.example.com",
                                  headers={"Content-type": ["text/html; charset=utf-8"]},
-                                 body=b"\xef\xbb\xbfWORD\xe3\xab")
+                                 body=b"\xef\xbb\xbfWORD\xe3\xab!")
         self.assertEqual(r6.encoding, 'utf-8')
-        self.assertEqual(r6.text, u'WORD\ufffd\ufffd')
+        self.assertEqual(r6.text, u'WORD\ufffd\ufffd!')
 
     def test_bom_is_removed_from_body(self):
         # Inferring encoding from body also cache decoded body as sideeffect,
