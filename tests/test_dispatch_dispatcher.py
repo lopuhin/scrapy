@@ -1,6 +1,3 @@
-import gc
-import sys
-import time
 import unittest
 import weakref
 import logging
@@ -15,24 +12,9 @@ from scrapy.dispatch import Signal, receiver
 from scrapy.dispatch.dispatcher import NO_RECEIVERS
 import scrapy.settings.default_settings as default_settings
 from scrapy.exceptions import DontCloseSpider
+from scrapy.utils.python import garbage_collect
 
 logging.basicConfig()
-
-if sys.platform.startswith('java'):
-    def garbage_collect():
-        # Some JVM GCs will execute finalizers in a different thread, meaning
-        # we need to wait for that to complete before we go on looking for the
-        # effects of that.
-        gc.collect()
-        time.sleep(0.1)
-elif hasattr(sys, "pypy_version_info"):
-    def garbage_collect():
-        # Collecting weakreferences can take two collections on PyPy.
-        gc.collect()
-        gc.collect()
-else:
-    def garbage_collect():
-        gc.collect()
 
 
 def receiver_1_arg(val, **kwargs):
@@ -213,7 +195,7 @@ class DispatcherTests(unittest.TestCase):
         # Should be fetched from the cache
         self.assertTrue(test_signal._live_receivers(sender=self))
         test_signal.disconnect(callback, sender=self)
-        gc.collect()
+        garbage_collect()
         test_signal = Signal(use_caching=False)
         test_signal.connect(Callable())
         def _clear_receivers(*args, **kwargs):
@@ -242,7 +224,7 @@ class DispatcherTests(unittest.TestCase):
         test_signal.send(sender=self, val='test')
         del test_signal.receiver_accepts_kwargs[id(a)]
         del a
-        gc.collect()
+        garbage_collect()
         test_signal.send(sender=self, val='test')
         self.assertTestIsClean(test_signal)
 
@@ -251,7 +233,7 @@ class DispatcherTests(unittest.TestCase):
         a = Callable()
         test_signal.connect(a)
         del a
-        gc.collect()
+        garbage_collect()
         test_signal.send_catch_log(sender=self, val='test')
         self.assertFalse(test_signal.receiver_accepts_kwargs)
         self.assertTestIsClean(test_signal)
