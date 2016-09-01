@@ -14,15 +14,14 @@ def function(receiver):
     If fromMethod is true, then the callable already
     has its first argument bound.
     """
-    if hasattr(receiver, '__call__'):
-        # receiver is a class instance; assume it is callable.
-        # Reassign receiver to the actual method that will be called.
-        if hasattr(receiver.__call__, '__func__') \
-                or hasattr(receiver.__call__, '__code__'):
-            receiver = receiver.__call__
-    if hasattr(receiver, '__func__'):
-        # an instance-method...
-        return receiver, receiver.__code__, True
+    if hasattr(receiver, 'im_func'):
+        return receiver, receiver.im_func.func_code, True
+    elif hasattr(receiver, 'func_code'):
+        return receiver, receiver.func_code, False
+    elif hasattr(receiver, '__call__') and (
+            hasattr(receiver.__call__, '__func__')
+            or hasattr(receiver.__call__, '__code__')):
+        return function(receiver.__call__)
     elif not hasattr(receiver, '__code__'):
         raise ValueError('unknown reciever type %s %s' %
                          (receiver, type(receiver)))
